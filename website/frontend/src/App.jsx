@@ -16,8 +16,8 @@ import bungalowImg from './assets/bungalow.png'
 
 const services = [
   {
-    title: 'Smart Property Matching',
-    description: 'Real-time AI rankings based on your budget and preferences.',
+    title: 'Smart Living Score',
+    description: 'A real-time AI score that evaluates comfort, convenience, and community across every home — giving you complete clarity before you decide.',
     accent: '#4FAFB2',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -26,8 +26,8 @@ const services = [
     ),
   },
   {
-    title: 'Neighborhood Insights',
-    description: 'Safety, amenities, commute, and quality-of-life scores.',
+    title: 'AI-Powered Recommendations',
+    description: 'Instant property recommendations tailored to your lifestyle — even without an account.',
     accent: '#F4A340',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -36,8 +36,8 @@ const services = [
     ),
   },
   {
-    title: 'Personalized Recommendations',
-    description: 'Get matched instantly — no account required.',
+    title: 'Neighborhood Insights',
+    description: 'Detailed safety, commute, amenities, and quality-of-life ratings for smarter decision-making.',
     accent: '#EF6C48',
     icon: (
       <svg viewBox="0 0 24 24" aria-hidden="true">
