@@ -42,13 +42,26 @@ app = FastAPI(
   version="0.2.0",
 )
 
-allowed_origins = [origin.strip() for origin in os.getenv("CORS_ALLOW_ORIGINS", "*").split(",") if origin.strip()]
+# CORS configuration - explicitly allow Vite dev server and production origins
+cors_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+if cors_origins_env:
+  allowed_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+  # Default: allow common dev origins
+  allowed_origins = [
+    "http://localhost:5173",  # Vite default
+    "http://localhost:3000",  # Alternative React dev server
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+  ]
+
 app.add_middleware(
   CORSMiddleware,
-  allow_origins=allowed_origins or ["*"],
-  allow_credentials=False,
-  allow_methods=["*"],
+  allow_origins=allowed_origins,
+  allow_credentials=True,
+  allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allow_headers=["*"],
+  expose_headers=["*"],
 )
 
 
@@ -175,16 +188,23 @@ def list_listings(
 ) -> List[Listing]:
   """Return featured listings fetched directly from Neon."""
 
-  engine = get_engine()
-  city_clause = "AND LOWER(location) LIKE :city_pattern" if city else ""
-  stmt = text(LISTING_QUERY.format(city_clause=city_clause))
+  try:
+    engine = get_engine()
+    city_clause = "AND LOWER(location) LIKE :city_pattern" if city else ""
+    stmt = text(LISTING_QUERY.format(city_clause=city_clause))
 
-  params: dict[str, object] = {"limit": limit}
-  if city:
-    params["city_pattern"] = f"%{city.lower()}%"
+    params: dict[str, object] = {"limit": limit}
+    if city:
+      params["city_pattern"] = f"%{city.lower()}%"
 
-  with engine.connect() as conn:
-    rows = conn.execute(stmt, params).mappings().all()
+    with engine.connect() as conn:
+      rows = conn.execute(stmt, params).mappings().all()
 
-  return _rows_to_listings(rows, limit)
+    return _rows_to_listings(rows, limit)
+  except Exception as e:
+    # Log error but still return empty/fallback listings so CORS headers are sent
+    import logging
+    logging.error(f"Error fetching listings: {e}", exc_info=True)
+    # Return empty list rather than raising to ensure CORS headers are sent
+    return []
 

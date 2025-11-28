@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import englishLogo from './assets/english_version.png'
-import logo from './assets/logo.png'
+import englishLogo from './assets/PNG/english_version.png'
+import logo from './assets/PNG/logo.png'
 import contactIllustration from './assets/contact-illustration.png'
-import footerIllustration from './assets/footer.png'
+import footerIllustration from './assets/PNG/footer.png'
 import footerSkyline from './assets/footer-skyline.png'
 import heroIllustration from './assets/home_page.png'
 import apartmentImg from './assets/apartment.png'
@@ -12,6 +12,7 @@ import condoImg from './assets/condo.png'
 import farmhouseImg from './assets/farmhouse.png'
 import penthouseImg from './assets/penthouse.png'
 import bungalowImg from './assets/bungalow.png'
+
 
 const services = [
   {
