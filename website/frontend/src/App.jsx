@@ -4,7 +4,6 @@ import englishLogo from './assets/PNG/english_version.png'
 import logo from './assets/PNG/logo.png'
 import contactIllustration from './assets/contact-illustration.png'
 import footerIllustration from './assets/PNG/footer.png'
-import footerSkyline from './assets/footer-skyline.png'
 import heroIllustration from './assets/home_page.png'
 import apartmentImg from './assets/apartment.png'
 import villaImg from './assets/villa.png'
@@ -12,6 +11,9 @@ import condoImg from './assets/condo.png'
 import farmhouseImg from './assets/farmhouse.png'
 import penthouseImg from './assets/penthouse.png'
 import bungalowImg from './assets/bungalow.png'
+import smartLivingScoreImg from './assets/Smart Living Score.png'
+import aiRecommendationsImg from './assets/AI-Powered Recommendations.png'
+import neighborhoodInsightsImg from './assets/Neighborhood Insights.png'
 
 
 const services = [
@@ -19,31 +21,19 @@ const services = [
     title: 'Smart Living Score',
     description: 'A real-time AI score that evaluates comfort, convenience, and community across every home — giving you complete clarity before you decide.',
     accent: '#4FAFB2',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M15 15l5 5m-2-8a7 7 0 11-14 0 7 7 0 0114 0z" />
-      </svg>
-    ),
+    image: smartLivingScoreImg,
   },
   {
     title: 'AI-Powered Recommendations',
     description: 'Instant property recommendations tailored to your lifestyle — even without an account.',
     accent: '#F4A340',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 2l7 7-7 13-7-13 7-7zm0 5.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" />
-      </svg>
-    ),
+    image: aiRecommendationsImg,
   },
   {
     title: 'Neighborhood Insights',
     description: 'Detailed safety, commute, amenities, and quality-of-life ratings for smarter decision-making.',
     accent: '#EF6C48',
-    icon: (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21l-7-6V5l7-3 7 3v10l-7 6zm0-6a3 3 0 100-6 3 3 0 000 6z" />
-      </svg>
-    ),
+    image: neighborhoodInsightsImg,
   },
 ]
 
@@ -146,20 +136,32 @@ function App() {
           throw new Error(`Request failed with status ${response.status}`)
         }
         const data = await response.json()
-        if (Array.isArray(data) && data.length > 0) {
-          const normalized = data.map((item, idx) => ({
-            id: item.id ?? idx,
-            title: item.title ?? 'Smart Home',
-            price: item.price ?? 'Price on request',
-            location: item.location ?? 'Unknown',
-            area: item.area ?? '—',
-            rooms: item.rooms ?? '—',
-            score: item.score ?? 'Smart score coming soon',
-            badge: item.badge ?? 'New Listing',
-            badgeColor: item.badge_color ?? item.badgeColor ?? '#F4A340',
-            image: item.image ?? fallbackListings[idx % fallbackListings.length].image,
-          }))
-          setListings(normalized)
+        console.log('API Response:', data) // Debug log
+        if (Array.isArray(data)) {
+          if (data.length > 0) {
+            const normalized = data.map((item, idx) => ({
+              id: item.id ?? idx,
+              title: item.title ?? 'Smart Home',
+              price: item.price ?? 'Price on request',
+              location: item.location ?? 'Unknown',
+              area: item.area ?? '—',
+              rooms: item.rooms ?? '—',
+              score: item.score ?? 'Smart score coming soon',
+              badge: item.badge ?? 'New Listing',
+              badgeColor: item.badge_color ?? item.badgeColor ?? '#F4A340',
+              image: item.image ?? fallbackListings[idx % fallbackListings.length].image,
+            }))
+            console.log('Normalized listings:', normalized) // Debug log
+            setListings(normalized)
+          } else {
+            console.warn('API returned empty array, using fallback listings')
+            setListingsError('No listings found. Showing featured picks instead.')
+            setListings(fallbackListings)
+          }
+        } else {
+          console.error('API response is not an array:', data)
+          setListingsError('Invalid response format. Showing featured picks instead.')
+          setListings(fallbackListings)
         }
       } catch (error) {
         if (error?.name === 'AbortError') return
@@ -178,32 +180,29 @@ function App() {
 
   return (
     <div className="app">
-      <header className="hero">
-        <nav className="nav">
-          <div className="brand">
-            <img src={englishLogo} alt="SmartLivingAdvisor logo" />
-            <span>SmartLivingAdvisor</span>
-          </div>
-          <div className="nav-links">
-            <a href="#listings">Buy</a>
-            <a href="#listings">Rent</a>
-            <a href="#services">Features</a>
-            <a href="#contact">Support</a>
-          </div>
-          <div className="nav-actions">
-            <button className="ghost">Sign In</button>
-            <button className="primary">Get Started</button>
-          </div>
-        </nav>
+      <nav className="nav">
+        <div className="nav-links">
+          <a href="#listings">Buy</a>
+          <a href="#listings">Rent</a>
+          <a href="#services">Features</a>
+          <a href="#contact">Support</a>
+        </div>
+        <div className="brand-center">
+          <img src={englishLogo} alt="SmartLivingAdvisor logo" />
+        </div>
+        <div className="nav-actions">
+          <button className="ghost">Sign In</button>
+          <button className="primary">Get Started</button>
+        </div>
+      </nav>
 
+      <header className="hero">
+        <div className="hero-background">
+          <img src={heroIllustration} alt="Hero background" />
+        </div>
         <div className="hero-content">
           <div className="hero-copy">
-            <p className="eyebrow">AI-Driven Real Estate Platform</p>
             <h1>Find the perfect home, smarter.</h1>
-            <p className="subtitle">
-              AI-powered recommendations tailored to your lifestyle. Explore homes with real-time scores for comfort, community,
-              and convenience.
-            </p>
 
             <div className="search-bar" role="search">
               <span className="search-icon" aria-hidden="true">
@@ -215,30 +214,14 @@ function App() {
               <button className="primary">Search</button>
             </div>
           </div>
-
-          <div className="hero-visual">
-            <img className="hero-illustration" src={heroIllustration} alt="Smart neighborhood illustration" />
-            <div className="visual-card">
-              <h3>Instant Smarter Matches</h3>
-              <p>Ranked by Smart Living Score</p>
-              <ul>
-                {heroStats.map((stat) => (
-                  <li key={stat.label}>
-                    <span className={`dot ${stat.color}`}></span>
-                    {stat.label}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
         </div>
       </header>
 
       <section id="services" className="services">
         {services.map((service) => (
           <article key={service.title} className="service-card">
-            <div className="service-icon" style={{ backgroundColor: service.accent + '20', color: service.accent }}>
-              {service.icon}
+            <div className="service-image">
+              <img src={service.image} alt={service.title} />
             </div>
             <h3>{service.title}</h3>
             <p>{service.description}</p>
@@ -339,8 +322,6 @@ function App() {
             <a href="#">Terms</a>
           </div>
         </div>
-        <img className="footer-illustration" src={footerIllustration} alt="SmartLivingAdvisor footer illustration" />
-        <img className="footer-skyline" src={footerSkyline} alt="Skyline illustration" />
         <div className="footer-bottom">
           <p>© {new Date().getFullYear()} SmartLivingAdvisor. All rights reserved.</p>
           <div className="socials">
@@ -354,6 +335,9 @@ function App() {
               x
             </a>
           </div>
+        </div>
+        <div className="footer-image-container">
+          <img className="footer-illustration" src={footerIllustration} alt="SmartLivingAdvisor footer illustration" />
         </div>
       </footer>
     </div>
