@@ -106,6 +106,26 @@ ORDER BY smart_living_score DESC NULLS LAST, price ASC
 LIMIT :limit
 """
 
+SEARCH_QUERY = """
+SELECT
+  no,
+  property_type,
+  price,
+  location,
+  latitude,
+  longitude,
+  COALESCE(floor_area_m2, floor_area) AS floor_area_m2,
+  num_rooms,
+  num_bathrooms,
+  smart_living_score
+FROM public.real_estate_data
+WHERE price IS NOT NULL
+  AND location IS NOT NULL
+  {search_clause}
+ORDER BY smart_living_score DESC NULLS LAST, price ASC
+LIMIT :limit
+"""
+
 
 def _format_price(price: float | int | None) -> str:
   if price is None:
@@ -206,5 +226,260 @@ def list_listings(
     import logging
     logging.error(f"Error fetching listings: {e}", exc_info=True)
     # Return empty list rather than raising to ensure CORS headers are sent
+    return []
+
+
+class SearchProperty(BaseModel):
+  """Property model for search results with map coordinates."""
+  no: int
+  property_type: str | None
+  price: float | int | None
+  location: str
+  latitude: float | None
+  longitude: float | None
+  num_rooms: int | None
+  num_bathrooms: int | None
+  floor_area_m2: float | None
+  smart_living_score: float | None
+
+
+@app.get("/search", response_model=List[SearchProperty], tags=["search"])
+def search_properties(
+  query: str = Query(default="", description="Search query for location, city, or neighborhood"),
+  property_type: str | None = Query(default=None, description="Filter by property type"),
+  min_price: int | None = Query(default=None, ge=0, description="Minimum price"),
+  max_price: int | None = Query(default=None, ge=0, description="Maximum price"),
+  min_beds: int | None = Query(default=None, ge=0, description="Minimum bedrooms"),
+  min_baths: int | None = Query(default=None, ge=0, description="Minimum bathrooms"),
+  has_gym: bool | None = Query(default=None, description="Has gym"),
+  has_parking: bool | None = Query(default=None, description="Has parking"),
+  has_pool: bool | None = Query(default=None, description="Has pool"),
+  amenities_contains: str | None = Query(default=None, description="Amenities contains text"),
+  air_conditioning: bool | None = Query(default=None, description="Has air conditioning"),
+  heating: bool | None = Query(default=None, description="Has heating"),
+  min_dist_hospital: float | None = Query(default=None, ge=0, description="Minimum distance to hospital"),
+  max_dist_hospital: float | None = Query(default=None, ge=0, description="Maximum distance to hospital"),
+  min_dist_school: float | None = Query(default=None, ge=0, description="Minimum distance to school"),
+  max_dist_school: float | None = Query(default=None, ge=0, description="Maximum distance to school"),
+  min_dist_bus: float | None = Query(default=None, ge=0, description="Minimum distance to bus"),
+  max_dist_bus: float | None = Query(default=None, ge=0, description="Maximum distance to bus"),
+  min_crime_rate: float | None = Query(default=None, ge=0, description="Minimum crime rate"),
+  max_crime_rate: float | None = Query(default=None, ge=0, description="Maximum crime rate"),
+  min_score: float | None = Query(default=None, ge=0, le=100, description="Minimum Smart Living Score"),
+  max_score: float | None = Query(default=None, ge=0, le=100, description="Maximum Smart Living Score"),
+  smart_label: str | None = Query(default=None, description="Smart label (Excellent, Good, Fair, Poor)"),
+  min_transport_score: float | None = Query(default=None, ge=0, description="Minimum transport score"),
+  max_transport_score: float | None = Query(default=None, ge=0, description="Maximum transport score"),
+  min_population: int | None = Query(default=None, ge=0, description="Minimum population"),
+  max_population: int | None = Query(default=None, ge=0, description="Maximum population"),
+  min_income: float | None = Query(default=None, ge=0, description="Minimum income"),
+  max_income: float | None = Query(default=None, ge=0, description="Maximum income"),
+  min_price_to_income: float | None = Query(default=None, ge=0, description="Minimum price-to-income ratio"),
+  max_price_to_income: float | None = Query(default=None, ge=0, description="Maximum price-to-income ratio"),
+  hqs_pass_only: bool | None = Query(default=None, description="HQS pass only"),
+  min_hqs_score: float | None = Query(default=None, ge=0, description="Minimum HQS score"),
+  max_hqs_score: float | None = Query(default=None, ge=0, description="Maximum HQS score"),
+  sort_by: str = Query(default="score", description="Sort by: score, price_asc, price_desc"),
+  limit: int = Query(default=50, ge=1, le=100),
+) -> List[SearchProperty]:
+  """Search properties with filters. Returns results with coordinates for map display."""
+
+  try:
+    engine = get_engine()
+    
+    # Build WHERE clause
+    conditions = ["price IS NOT NULL", "location IS NOT NULL"]
+    params: dict[str, object] = {"limit": limit}
+    
+    if query:
+      conditions.append("(LOWER(location) LIKE :search_pattern OR LOWER(property_type) LIKE :search_pattern)")
+      params["search_pattern"] = f"%{query.lower()}%"
+    
+    if property_type:
+      conditions.append("LOWER(property_type) = :property_type")
+      params["property_type"] = property_type.lower()
+    
+    if min_price is not None:
+      conditions.append("price >= :min_price")
+      params["min_price"] = min_price
+    
+    if max_price is not None:
+      conditions.append("price <= :max_price")
+      params["max_price"] = max_price
+    
+    if min_beds is not None:
+      conditions.append("num_rooms >= :min_beds")
+      params["min_beds"] = min_beds
+    
+    if min_baths is not None:
+      conditions.append("num_bathrooms >= :min_baths")
+      params["min_baths"] = min_baths
+    
+    if has_gym is not None:
+      conditions.append("has_gym = :has_gym")
+      params["has_gym"] = has_gym
+    
+    if has_parking is not None:
+      conditions.append("has_parking = :has_parking")
+      params["has_parking"] = has_parking
+    
+    if has_pool is not None:
+      conditions.append("has_pool = :has_pool")
+      params["has_pool"] = has_pool
+    
+    if min_score is not None:
+      conditions.append("smart_living_score >= :min_score")
+      params["min_score"] = min_score
+    
+    if max_score is not None:
+      conditions.append("smart_living_score <= :max_score")
+      params["max_score"] = max_score
+    
+    if smart_label:
+      conditions.append("LOWER(smart_label) = :smart_label")
+      params["smart_label"] = smart_label.lower()
+    
+    if amenities_contains:
+      conditions.append("LOWER(amenities) LIKE :amenities_contains")
+      params["amenities_contains"] = f"%{amenities_contains.lower()}%"
+    
+    if air_conditioning is not None:
+      conditions.append("air_conditioning = :air_conditioning")
+      params["air_conditioning"] = air_conditioning
+    
+    if heating is not None:
+      conditions.append("heating = :heating")
+      params["heating"] = heating
+    
+    if min_dist_hospital is not None:
+      conditions.append("dist_hospital >= :min_dist_hospital")
+      params["min_dist_hospital"] = min_dist_hospital
+    
+    if max_dist_hospital is not None:
+      conditions.append("dist_hospital <= :max_dist_hospital")
+      params["max_dist_hospital"] = max_dist_hospital
+    
+    if min_dist_school is not None:
+      conditions.append("dist_school >= :min_dist_school")
+      params["min_dist_school"] = min_dist_school
+    
+    if max_dist_school is not None:
+      conditions.append("dist_school <= :max_dist_school")
+      params["max_dist_school"] = max_dist_school
+    
+    if min_dist_bus is not None:
+      conditions.append("dist_bus >= :min_dist_bus")
+      params["min_dist_bus"] = min_dist_bus
+    
+    if max_dist_bus is not None:
+      conditions.append("dist_bus <= :max_dist_bus")
+      params["max_dist_bus"] = max_dist_bus
+    
+    if min_crime_rate is not None:
+      conditions.append("crime_rate >= :min_crime_rate")
+      params["min_crime_rate"] = min_crime_rate
+    
+    if max_crime_rate is not None:
+      conditions.append("crime_rate <= :max_crime_rate")
+      params["max_crime_rate"] = max_crime_rate
+    
+    if min_transport_score is not None:
+      conditions.append("transport_score >= :min_transport_score")
+      params["min_transport_score"] = min_transport_score
+    
+    if max_transport_score is not None:
+      conditions.append("transport_score <= :max_transport_score")
+      params["max_transport_score"] = max_transport_score
+    
+    if min_population is not None:
+      conditions.append("population >= :min_population")
+      params["min_population"] = min_population
+    
+    if max_population is not None:
+      conditions.append("population <= :max_population")
+      params["max_population"] = max_population
+    
+    if min_income is not None:
+      conditions.append("income >= :min_income")
+      params["min_income"] = min_income
+    
+    if max_income is not None:
+      conditions.append("income <= :max_income")
+      params["max_income"] = max_income
+    
+    if min_price_to_income is not None:
+      conditions.append("price_to_income_ratio >= :min_price_to_income")
+      params["min_price_to_income"] = min_price_to_income
+    
+    if max_price_to_income is not None:
+      conditions.append("price_to_income_ratio <= :max_price_to_income")
+      params["max_price_to_income"] = max_price_to_income
+    
+    if hqs_pass_only is not None:
+      conditions.append("_hqs_pass_boolean = :hqs_pass_only")
+      params["hqs_pass_only"] = hqs_pass_only
+    
+    if min_hqs_score is not None:
+      conditions.append("hqs_score >= :min_hqs_score")
+      params["min_hqs_score"] = min_hqs_score
+    
+    if max_hqs_score is not None:
+      conditions.append("hqs_score <= :max_hqs_score")
+      params["max_hqs_score"] = max_hqs_score
+    
+    where_clause = " AND ".join(conditions)
+    
+    # Build ORDER BY clause
+    if sort_by == "price_asc":
+      order_by = "price ASC"
+    elif sort_by == "price_desc":
+      order_by = "price DESC"
+    else:  # default: score
+      order_by = "smart_living_score DESC NULLS LAST, price ASC"
+    
+    query_sql = f"""
+    SELECT
+      no,
+      property_type,
+      price,
+      location,
+      latitude,
+      longitude,
+      COALESCE(floor_area_m2, floor_area) AS floor_area_m2,
+      num_rooms,
+      num_bathrooms,
+      smart_living_score
+    FROM public.real_estate_data
+    WHERE {where_clause}
+    ORDER BY {order_by}
+    LIMIT :limit
+    """
+    
+    stmt = text(query_sql)
+
+    with engine.connect() as conn:
+      rows = conn.execute(stmt, params).mappings().all()
+
+    results: List[SearchProperty] = []
+    for row in rows:
+      results.append(
+        SearchProperty(
+          no=int(row["no"]),
+          property_type=row.get("property_type"),
+          price=row.get("price"),
+          location=str(row.get("location") or "Unknown"),
+          latitude=float(row["latitude"]) if row.get("latitude") is not None else None,
+          longitude=float(row["longitude"]) if row.get("longitude") is not None else None,
+          num_rooms=row.get("num_rooms"),
+          num_bathrooms=row.get("num_bathrooms"),
+          floor_area_m2=float(row["floor_area_m2"]) if row.get("floor_area_m2") is not None else None,
+          smart_living_score=float(row["smart_living_score"]) if row.get("smart_living_score") is not None else None,
+        )
+      )
+
+    return results
+  except Exception as e:
+    import logging
+    logging.error(f"Error searching properties: {e}", exc_info=True)
     return []
 

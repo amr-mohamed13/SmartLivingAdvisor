@@ -1,0 +1,244 @@
+/* Search Results Page - Zillow-Level Professional Design */
+
+:root {
+  --primary: #004F52;
+  --primary-light: #E5F5F6;
+  --accent-teal: #2BB6C2;
+  --gray-900: #0A0A0A;
+  --gray-600: #595959;
+  --gray-300: #D9D9D9;
+  --background: #F7F9FA;
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+}
+
+.search-results-page {
+  min-height: 100vh;
+  background: var(--background);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main Container - Split Layout (Map Left, Listings Right) */
+.search-results-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  height: calc(100vh - 80px);
+  max-width: 100%;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Left Column - Map (Fixed, Sticky) */
+.search-results-map {
+  position: relative;
+  height: 100%;
+  background: var(--background);
+  border-right: 1px solid var(--gray-300);
+  overflow: hidden;
+}
+
+/* Right Column - Listings (Scrollable) */
+.search-results-listings-wrapper {
+  overflow-y: auto;
+  background: #fff;
+  height: 100%;
+  position: relative;
+}
+
+.search-results-listings-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.search-results-listings-wrapper::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+.search-results-listings-wrapper::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 4px;
+}
+
+.search-results-listings-wrapper::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-600);
+}
+
+.search-results-listings {
+  padding: var(--spacing-xl);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+}
+
+/* Results Header */
+.results-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid #E5E7EB;
+  flex-wrap: wrap;
+  gap: var(--spacing-lg);
+}
+
+.results-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.results-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.results-count {
+  font-size: 14px;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.sort-dropdown {
+  padding: 8px 12px;
+  border: 1px solid var(--gray-300);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 14px;
+  color: var(--gray-900);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.sort-dropdown:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 79, 82, 0.1);
+}
+
+/* Property List Grid - 2 Columns */
+.search-results-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--spacing-xl);
+  flex: 1;
+}
+
+/* Status Messages */
+.search-results-status {
+  text-align: center;
+  padding: var(--spacing-2xl) var(--spacing-lg);
+  color: var(--gray-600);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+}
+
+.search-results-status p {
+  font-size: 16px;
+  margin: var(--spacing-sm) 0;
+}
+
+.search-results-status.error p {
+  color: #EF4444;
+}
+
+.search-results-subtext {
+  font-size: 14px;
+  color: var(--gray-600);
+  margin-top: var(--spacing-sm);
+}
+
+/* Footer inside properties list */
+.search-results-listings .footer {
+  margin-top: var(--spacing-2xl);
+  padding-top: var(--spacing-xl);
+  border-top: 1px solid #E5E7EB;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .search-results-container {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .search-results-map {
+    border-right: none;
+    border-bottom: 1px solid var(--gray-300);
+    height: 500px;
+    position: relative;
+    order: 2;
+  }
+
+  .search-results-listings-wrapper {
+    height: auto;
+    order: 1;
+  }
+
+  .search-results-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-results-listings {
+    padding: var(--spacing-lg);
+  }
+
+  .search-results-list {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+  }
+
+  .results-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .results-title {
+    font-size: 20px;
+  }
+}
+
+/* Map Placeholder Styles */
+.map-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background);
+}
+
+.map-placeholder-content {
+  text-align: center;
+  color: var(--gray-600);
+}
+
+.map-placeholder-content svg {
+  margin: 0 auto var(--spacing-lg);
+  color: var(--gray-600);
+}
+
+.map-placeholder-content p {
+  margin: var(--spacing-sm) 0;
+  font-size: 16px;
+}
+
+.map-placeholder-note {
+  font-size: 14px;
+  color: var(--gray-600);
+}
