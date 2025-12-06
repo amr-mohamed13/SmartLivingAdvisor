@@ -23,31 +23,19 @@ const formatSpecs = (property) => {
   return specs.join(' • ')
 }
 
-function SimilarHomes({ property }) {
+function SimilarHomes({ propertyId }) {
   const [homes, setHomes] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchSimilar() {
-      if (!property) return
+      if (!propertyId) return
       try {
         setLoading(true)
-        const params = new URLSearchParams()
-        if (property.property_type) params.set('property_type', property.property_type)
-        if (property.price) {
-          const price = Number(property.price)
-          if (Number.isFinite(price)) {
-            params.set('min_price', Math.max(0, Math.round(price * 0.85)))
-            params.set('max_price', Math.round(price * 1.15))
-          }
-        }
-        if (property.location) params.set('query', property.location)
-        params.set('limit', '12')
-
-        const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`)
+        const response = await fetch(`${API_BASE_URL}/api/properties/similar?id=${propertyId}`)
         if (!response.ok) throw new Error('Unable to load similar properties')
         const data = await response.json()
-        if (Array.isArray(data)) setHomes(data.filter((home) => home.no !== property.no))
+        if (Array.isArray(data)) setHomes(data)
       } catch (err) {
         console.error(err)
       } finally {
@@ -56,7 +44,7 @@ function SimilarHomes({ property }) {
     }
 
     fetchSimilar()
-  }, [property])
+  }, [propertyId])
 
   return (
     <section className="related-section">

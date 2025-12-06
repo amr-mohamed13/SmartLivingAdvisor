@@ -190,7 +190,7 @@ function SearchResults() {
         if (minHqsScore) params.append('min_hqs_score', minHqsScore)
         if (maxHqsScore) params.append('max_hqs_score', maxHqsScore)
         params.append('sort_by', sortBy)
-        params.append('limit', '200')
+        params.append('limit', '100')
 
         const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`)
         
@@ -365,8 +365,7 @@ function SearchResults() {
   
   const handlePropertyClick = (property) => {
     // Navigate to property detail page
-    // navigate(`/property/${property.no}`)
-    console.log('Property clicked:', property)
+    navigate(`/property/${property.no}`)
   }
   
   const moreFiltersCount = [

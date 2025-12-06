@@ -31,11 +31,16 @@ function NearbyHomes({ latitude, longitude, city }) {
     async function fetchNearby() {
       try {
         setLoading(true)
-        const params = new URLSearchParams()
-        params.set('limit', '12')
-        if (city) params.set('query', city)
-        const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`)
-        if (!response.ok) throw new Error('Unable to load nearby properties')
+        let response
+        if (latitude && longitude) {
+          response = await fetch(`${API_BASE_URL}/api/properties/nearby?lat=${latitude}&lng=${longitude}&radius=10`)
+        }
+        if ((!response || !response.ok) && city) {
+          response = await fetch(`${API_BASE_URL}/api/properties?city=${encodeURIComponent(city)}`)
+        }
+        if (!response || !response.ok) {
+          throw new Error('Unable to load nearby properties')
+        }
         const data = await response.json()
         if (Array.isArray(data)) setHomes(data)
       } catch (err) {

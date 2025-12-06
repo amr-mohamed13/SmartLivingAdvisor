@@ -30,7 +30,7 @@ function PropertyDetailsPage() {
       try {
         setLoading(true)
         setError(null)
-        const response = await fetch(`${API_BASE_URL}/property/${id}`)
+        const response = await fetch(`${API_BASE_URL}/api/properties/${id}`)
         if (!response.ok) throw new Error('Unable to load property')
         const data = await response.json()
         setProperty(data)
@@ -129,7 +129,7 @@ function PropertyDetailsPage() {
         <PropertyFacts property={property} />
         <MapArea lat={coordinates.lat} lng={coordinates.lng} address={property.location || property.address} city={property.city} />
         <NearbyHomes latitude={coordinates.lat} longitude={coordinates.lng} city={property.city} />
-        <SimilarHomes property={property} />
+        <SimilarHomes propertyId={id} />
       </main>
     </div>
   )
