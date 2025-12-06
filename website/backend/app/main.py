@@ -8,8 +8,12 @@ pulling live rows from the `real_estate_data` table hosted on Neon.
 from __future__ import annotations
 
 import os
+import logging
+import math
 from functools import lru_cache
 from typing import List, Sequence
+
+import httpx
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
@@ -200,6 +204,47 @@ def _rows_to_listings(rows: Sequence[dict], limit: int) -> List[Listing]:
   return listings[:limit]
 
 
+def _haversine_miles(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+  """Approximate distance in miles between two coordinates."""
+
+  # Convert degrees to radians
+  lat1_rad, lon1_rad, lat2_rad, lon2_rad = map(math.radians, [lat1, lon1, lat2, lon2])
+  dlat = lat2_rad - lat1_rad
+  dlon = lon2_rad - lon1_rad
+
+  a = math.sin(dlat / 2) ** 2 + math.cos(lat1_rad) * math.cos(lat2_rad) * math.sin(dlon / 2) ** 2
+  c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+  earth_radius_miles = 3958.8
+  return earth_radius_miles * c
+
+
+def _extract_city_from_location(location_str: str | None) -> str | None:
+  if not location_str:
+    return None
+  if "," in location_str:
+    return location_str.split(",")[-1].strip()
+  return location_str.split()[-1] if location_str else None
+
+
+def _build_fallback_places(types_param: str) -> List[Place]:
+  requested_types = [t for t in types_param.split(",") if t]
+  categories = [c for c in DEFAULT_PLACE_CATEGORIES if not requested_types or c[0] in requested_types]
+  if not categories:
+    categories = DEFAULT_PLACE_CATEGORIES
+
+  return [
+    Place(
+      name=f"{label} nearby",
+      rating=4.6,
+      distance="Within 2 mi",
+      types=[type_key],
+      icon=icon,
+    )
+    for type_key, label, icon in categories
+  ]
+
+
 @app.get("/health", tags=["system"])
 def healthcheck() -> dict[str, str]:
   """Basic health endpoint for uptime checks."""
@@ -235,6 +280,16 @@ def list_listings(
     return []
 
 
+@app.get("/api/properties", response_model=List[Listing], tags=["properties"])
+def api_list_properties(
+  city: str | None = Query(default=None, description="Filter by city or neighborhood"),
+  limit: int = Query(default=6, ge=1, le=24),
+) -> List[Listing]:
+  """Alias of /listings for the frontend /api namespace."""
+
+  return list_listings(city=city, limit=limit)
+
+
 class SearchProperty(BaseModel):
   """Property model for search results with map coordinates."""
   no: int
@@ -247,6 +302,49 @@ class SearchProperty(BaseModel):
   num_bathrooms: int | None
   floor_area_m2: float | None
   smart_living_score: float | None
+
+
+class Place(BaseModel):
+  """Nearby place/point of interest."""
+
+  name: str
+  rating: float | None = None
+  distance: str | None = None
+  types: List[str] | None = None
+  icon: str | None = None
+
+
+DEFAULT_PLACE_CATEGORIES = [
+  ("school", "Schools", "🎓"),
+  ("hospital", "Hospitals", "🏥"),
+  ("restaurant", "Restaurants", "🍴"),
+  ("grocery_or_supermarket", "Grocery Stores", "🛒"),
+  ("park", "Parks", "🌳"),
+  ("transit_station", "Transit Stations", "🚌"),
+]
+
+
+def _rows_to_search_properties(rows: Sequence[dict]) -> List[SearchProperty]:
+  """Convert DB rows into SearchProperty objects."""
+
+  results: List[SearchProperty] = []
+  for row in rows:
+    results.append(
+      SearchProperty(
+        no=int(row["no"]),
+        property_type=row.get("property_type"),
+        price=row.get("price"),
+        location=str(row.get("location") or "Unknown"),
+        latitude=float(row["latitude"]) if row.get("latitude") is not None else None,
+        longitude=float(row["longitude"]) if row.get("longitude") is not None else None,
+        num_rooms=row.get("num_rooms"),
+        num_bathrooms=row.get("num_bathrooms"),
+        floor_area_m2=float(row["floor_area_m2"]) if row.get("floor_area_m2") is not None else None,
+        smart_living_score=float(row["smart_living_score"]) if row.get("smart_living_score") is not None else None,
+      )
+    )
+
+  return results
 
 
 class PropertyDetail(SearchProperty):
@@ -475,24 +573,7 @@ def search_properties(
     with engine.connect() as conn:
       rows = conn.execute(stmt, params).mappings().all()
 
-    results: List[SearchProperty] = []
-    for row in rows:
-      results.append(
-        SearchProperty(
-          no=int(row["no"]),
-          property_type=row.get("property_type"),
-          price=row.get("price"),
-          location=str(row.get("location") or "Unknown"),
-          latitude=float(row["latitude"]) if row.get("latitude") is not None else None,
-          longitude=float(row["longitude"]) if row.get("longitude") is not None else None,
-          num_rooms=row.get("num_rooms"),
-          num_bathrooms=row.get("num_bathrooms"),
-          floor_area_m2=float(row["floor_area_m2"]) if row.get("floor_area_m2") is not None else None,
-          smart_living_score=float(row["smart_living_score"]) if row.get("smart_living_score") is not None else None,
-        )
-      )
-
-    return results
+    return _rows_to_search_properties(rows)
   except Exception as e:
     import logging
     logging.error(f"Error searching properties: {e}", exc_info=True)
@@ -572,4 +653,197 @@ def get_property_by_id(id: int) -> PropertyDetail:
   """Return a single property by its listing number (API endpoint for frontend)."""
   # Delegate to the main property endpoint
   return get_property(id)
+
+
+@app.get("/api/properties/similar", response_model=List[SearchProperty], tags=["properties"])
+def get_similar_properties(
+  id: int = Query(..., description="Base property id to compare"),
+  limit: int = Query(default=6, ge=1, le=24),
+) -> List[SearchProperty]:
+  """Return properties similar to the provided id using location, type, and price."""
+
+  try:
+    engine = get_engine()
+
+    with engine.connect() as conn:
+      base_row = conn.execute(
+        text(
+          """
+          SELECT price, location, property_type
+          FROM public.real_estate_data
+          WHERE no = :id
+          LIMIT 1
+          """
+        ),
+        {"id": id},
+      ).mappings().first()
+
+    if not base_row:
+      return []
+
+    conditions = ["no != :id", "price IS NOT NULL", "location IS NOT NULL"]
+    params: dict[str, object] = {"id": id, "limit": limit}
+
+    price = base_row.get("price")
+    if price is not None:
+      params["min_price"] = float(price) * 0.8
+      params["max_price"] = float(price) * 1.2
+      conditions.append("price BETWEEN :min_price AND :max_price")
+
+    property_type = base_row.get("property_type")
+    if property_type:
+      params["property_type"] = str(property_type).lower()
+      conditions.append("LOWER(property_type) = :property_type")
+
+    city = _extract_city_from_location(base_row.get("location"))
+    if city:
+      params["city_pattern"] = f"%{city.lower()}%"
+      conditions.append("LOWER(location) LIKE :city_pattern")
+
+    where_clause = " AND ".join(conditions)
+
+    query_sql = f"""
+    SELECT
+      no,
+      property_type,
+      price,
+      location,
+      latitude,
+      longitude,
+      COALESCE(floor_area_m2, floor_area) AS floor_area_m2,
+      num_rooms,
+      num_bathrooms,
+      smart_living_score
+    FROM public.real_estate_data
+    WHERE {where_clause}
+    ORDER BY smart_living_score DESC NULLS LAST, price ASC
+    LIMIT :limit
+    """
+
+    with engine.connect() as conn:
+      rows = conn.execute(text(query_sql), params).mappings().all()
+
+    return _rows_to_search_properties(rows)
+  except Exception as e:
+    logging.error(f"Error fetching similar properties for {id}: {e}", exc_info=True)
+    return []
+
+
+@app.get("/api/properties/nearby", response_model=List[SearchProperty], tags=["properties"])
+def get_nearby_properties(
+  lat: float = Query(..., description="Latitude of the reference point"),
+  lng: float = Query(..., description="Longitude of the reference point"),
+  radius: float = Query(default=10, ge=0.1, le=100, description="Search radius in miles"),
+  limit: int = Query(default=12, ge=1, le=50),
+) -> List[SearchProperty]:
+  """Return properties within a simple bounding box around the given coordinate."""
+
+  try:
+    engine = get_engine()
+
+    delta_lat = radius / 69.0
+    cos_lat = max(math.cos(math.radians(lat)), 0.1)
+    delta_lng = radius / (69.0 * cos_lat)
+
+    query_sql = """
+    SELECT
+      no,
+      property_type,
+      price,
+      location,
+      latitude,
+      longitude,
+      COALESCE(floor_area_m2, floor_area) AS floor_area_m2,
+      num_rooms,
+      num_bathrooms,
+      smart_living_score
+    FROM public.real_estate_data
+    WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+      AND ABS(latitude - :lat) <= :delta_lat
+      AND ABS(longitude - :lng) <= :delta_lng
+    ORDER BY smart_living_score DESC NULLS LAST, price ASC
+    LIMIT :limit
+    """
+
+    params = {
+      "lat": lat,
+      "lng": lng,
+      "delta_lat": delta_lat,
+      "delta_lng": delta_lng,
+      "limit": limit,
+    }
+
+    with engine.connect() as conn:
+      rows = conn.execute(text(query_sql), params).mappings().all()
+
+    return _rows_to_search_properties(rows)
+  except Exception as e:
+    logging.error(f"Error fetching nearby properties for {lat},{lng}: {e}", exc_info=True)
+    return []
+
+
+@app.get("/api/places/nearby", response_model=List[Place], tags=["places"])
+def get_nearby_places(
+  lat: float = Query(..., description="Latitude for nearby search"),
+  lng: float = Query(..., description="Longitude for nearby search"),
+  radius: int = Query(default=2500, ge=100, le=50000, description="Search radius in meters"),
+  types: str = Query(default="", description="Comma-separated list of place types"),
+) -> List[Place]:
+  """Lightweight proxy for Google Places with graceful fallbacks."""
+
+  api_key = os.getenv("GOOGLE_MAPS_API_KEY") or os.getenv("VITE_GOOGLE_MAPS_API_KEY")
+
+  if lat is None or lng is None:
+    return _build_fallback_places(types)
+
+  if not api_key:
+    return _build_fallback_places(types)
+
+  try:
+    params = {
+      "location": f"{lat},{lng}",
+      "radius": radius,
+      "key": api_key,
+    }
+
+    type_list = [t for t in types.split(",") if t]
+    if type_list:
+      params["type"] = type_list[0]
+
+    with httpx.Client(timeout=10.0) as client:
+      response = client.get("https://maps.googleapis.com/maps/api/place/nearbysearch/json", params=params)
+
+    if response.status_code != 200:
+      logging.error("Places request failed with status %s", response.status_code)
+      return _build_fallback_places(types)
+
+    data = response.json()
+    results = data.get("results") or []
+
+    places: List[Place] = []
+    for place in results[:18]:
+      distance_label = "Within 2 mi"
+      geometry = place.get("geometry", {}) or {}
+      location = geometry.get("location") or {}
+      if "lat" in location and "lng" in location:
+        try:
+          miles = _haversine_miles(lat, lng, float(location["lat"]), float(location["lng"]))
+          distance_label = f"{miles:.1f} mi"
+        except Exception:
+          distance_label = "Within 2 mi"
+
+      places.append(
+        Place(
+          name=place.get("name") or "Point of interest",
+          rating=place.get("rating"),
+          distance=distance_label,
+          types=place.get("types"),
+          icon=None,
+        )
+      )
+
+    return places or _build_fallback_places(types)
+  except Exception as e:
+    logging.error(f"Error looking up nearby places: {e}", exc_info=True)
+    return _build_fallback_places(types)
 
