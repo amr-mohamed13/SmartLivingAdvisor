@@ -18,6 +18,8 @@ from pydantic import BaseModel
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 
+from app.routers import auth, user
+
 load_dotenv()
 
 
@@ -63,6 +65,10 @@ app.add_middleware(
   allow_headers=["*"],
   expose_headers=["*"],
 )
+
+# Register routers
+app.include_router(auth.router)
+app.include_router(user.router)
 
 
 def get_engine() -> Engine:

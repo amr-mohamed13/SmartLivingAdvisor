@@ -1,4 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 import PropertyGallery from './PropertyGallery'
 import PropertySummary from './PropertySummary'
 import PropertyFacts from './PropertyFacts'
@@ -9,6 +11,8 @@ import './PropertyModal.css'
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function PropertyModal({ property, onClose }) {
+  const navigate = useNavigate()
+  const { isAuthenticated, token } = useAuth()
   const [fullProperty, setFullProperty] = useState(property)
   const [loading, setLoading] = useState(!property)
   const [error, setError] = useState(null)
@@ -54,26 +58,93 @@ function PropertyModal({ property, onClose }) {
     }
   }, [])
 
+  // Check if property is saved on load
+  useEffect(() => {
+    if (isAuthenticated && token && fullProperty?.no) {
+      checkSavedStatus()
+    }
+  }, [isAuthenticated, token, fullProperty?.no])
+
+  const checkSavedStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/saved-properties`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const savedIds = await response.json()
+        setIsSaved(savedIds.includes(fullProperty.no))
+      }
+    } catch (err) {
+      console.error('Failed to check saved status:', err)
+    }
+  }
+
+  // Log view when modal opens
+  useEffect(() => {
+    if (isAuthenticated && token && fullProperty?.no) {
+      logView()
+    }
+  }, [isAuthenticated, token, fullProperty?.no])
+
+  const logView = async () => {
+    try {
+      await fetch(`${API_BASE_URL}/user/view-property`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ property_id: fullProperty.no })
+      })
+    } catch (err) {
+      console.error('Failed to log view:', err)
+    }
+  }
+
   const handleSaveProperty = async () => {
-    const authToken = localStorage.getItem('authToken')
-    if (!authToken) {
-      setShowSignInPrompt(true)
+    if (!isAuthenticated) {
+      onClose()
+      navigate('/signin')
       return
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/save-property`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ propertyId: fullProperty?.no }),
-      })
-      if (!response.ok) throw new Error('Unable to save property')
-      setIsSaved(true)
+      if (isSaved) {
+        // Unsave property
+        const response = await fetch(`${API_BASE_URL}/user/save-property/${fullProperty.no}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        })
+        
+        if (response.ok) {
+          setIsSaved(false)
+        } else {
+          throw new Error('Unable to unsave property')
+        }
+      } else {
+        // Save property
+        const response = await fetch(`${API_BASE_URL}/user/save-property`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ property_id: fullProperty.no }),
+        })
+        
+        if (response.ok) {
+          setIsSaved(true)
+        } else {
+          throw new Error('Unable to save property')
+        }
+      }
     } catch (err) {
       console.error(err)
+      alert('Failed to save property. Please try again.')
     }
   }
 
@@ -183,4 +254,5 @@ function PropertyModal({ property, onClose }) {
 }
 
 export default PropertyModal
+
 

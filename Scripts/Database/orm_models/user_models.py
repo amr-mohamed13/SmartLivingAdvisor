@@ -11,20 +11,17 @@ class User(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
 
     # Email authentication
-    email = Column(String(255), unique=True, index=True)
-    password_hash = Column(String(255), nullable=True)  # nullable if signing in with Google/Apple
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password_hash = Column(String(255), nullable=True)  # nullable if signing in with OAuth
+    name = Column(String(255), nullable=True)
 
-    # Social login IDs
-    google_id = Column(String(255), unique=True, nullable=True)
-    apple_id = Column(String(255), unique=True, nullable=True)
-    facebook_id = Column(String(255), unique=True, nullable=True)
+    # OAuth fields (unified approach)
+    oauth_provider = Column(String(50), nullable=True)  # "google", "facebook", "apple"
+    oauth_id = Column(String(255), nullable=True)  # Provider's user ID
 
-    # Authentication method
-    # Values: "email", "google", "facebook", "apple", "mixed"
-    auth_provider = Column(String(50), default="email")
-
-    # Timestamp
+    # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
             
 
@@ -44,10 +41,10 @@ class UserInteraction(Base):
     __tablename__ = "user_interactions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    property_no = Column(Integer)
-    interaction_type = Column(String(50))
-    created_at = Column(TIMESTAMP, server_default=func.now())
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    property_id = Column(Integer, nullable=False)  # Changed from property_no to property_id for consistency
+    interaction_type = Column(String(50), nullable=False)  # "saved", "viewed", "contacted_agent"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
 
 class SavedProperties(Base):
@@ -56,3 +53,14 @@ class SavedProperties(Base):
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     property_no = Column(Integer, primary_key=True)
     saved_at = Column(TIMESTAMP, server_default=func.now())
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    token = Column(String(512), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    revoked = Column(Boolean, default=False)
