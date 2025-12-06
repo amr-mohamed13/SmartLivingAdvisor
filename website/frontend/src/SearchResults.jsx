@@ -10,6 +10,7 @@ import MapView from './components/MapView'
 import SearchBar from './components/SearchBar'
 import ListingCard from './components/ListingCard'
 import FilterDrawer from './components/FilterDrawer'
+import PropertyModal from './components/PropertyModal'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -74,6 +75,7 @@ function SearchResults() {
   const [openModal, setOpenModal] = useState(null) // 'homeType', 'bedsBaths', 'price', 'more'
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false)
   const [hoveredProperty, setHoveredProperty] = useState(null)
+  const [selectedProperty, setSelectedProperty] = useState(null) // For property detail modal
   
   const SMART_LABEL_OPTIONS = ['', 'Excellent', 'Good', 'Fair', 'Poor']
   
@@ -364,8 +366,8 @@ function SearchResults() {
   }
   
   const handlePropertyClick = (property) => {
-    // Navigate to property detail page
-    navigate(`/property/${property.no}`)
+    // Open property detail modal
+    setSelectedProperty(property)
   }
   
   const moreFiltersCount = [
@@ -1067,6 +1069,14 @@ function SearchResults() {
           </div>
         </div>
       </div>
+
+      {/* Property Detail Modal */}
+      {selectedProperty && (
+        <PropertyModal 
+          property={selectedProperty} 
+          onClose={() => setSelectedProperty(null)} 
+        />
+      )}
     </div>
   )
 }

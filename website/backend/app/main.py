@@ -247,6 +247,9 @@ class PropertyDetail(SearchProperty):
   """Extended property model for the PDP."""
   description: str | None = None
   amenities: str | None = None
+  images: List[str] | None = None
+  city: str | None = None
+  address: str | None = None
 
 
 @app.get("/search", response_model=List[SearchProperty], tags=["search"])
@@ -483,7 +486,7 @@ def search_properties(
         )
       )
 
-  return results
+    return results
   except Exception as e:
     import logging
     logging.error(f"Error searching properties: {e}", exc_info=True)
@@ -509,7 +512,6 @@ def get_property(property_id: int) -> PropertyDetail:
       num_rooms,
       num_bathrooms,
       smart_living_score,
-      description,
       amenities
     FROM public.real_estate_data
     WHERE no = :property_id
@@ -522,19 +524,34 @@ def get_property(property_id: int) -> PropertyDetail:
     if not row:
       raise HTTPException(status_code=404, detail="Property not found")
 
+    location_str = str(row.get("location") or "Unknown")
+    # Try to extract city from location (assume it's the last part after comma, or the whole string)
+    city = None
+    if "," in location_str:
+      city = location_str.split(",")[-1].strip()
+    else:
+      city = location_str.split()[-1] if location_str else None
+
+    # Generate images array based on property type
+    property_type = row.get("property_type") or ""
+    images = LISTING_IMAGES.copy()  # Use all available images for the gallery
+
     return PropertyDetail(
       no=int(row["no"]),
       property_type=row.get("property_type"),
       price=row.get("price"),
-      location=str(row.get("location") or "Unknown"),
+      location=location_str,
       latitude=float(row["latitude"]) if row.get("latitude") is not None else None,
       longitude=float(row["longitude"]) if row.get("longitude") is not None else None,
       num_rooms=row.get("num_rooms"),
       num_bathrooms=row.get("num_bathrooms"),
       floor_area_m2=float(row["floor_area_m2"]) if row.get("floor_area_m2") is not None else None,
       smart_living_score=float(row["smart_living_score"]) if row.get("smart_living_score") is not None else None,
-      description=row.get("description"),
+      description=None,  # Description column doesn't exist in database
       amenities=row.get("amenities"),
+      images=images,
+      city=city,
+      address=location_str,
     )
   except HTTPException:
     raise
@@ -542,4 +559,11 @@ def get_property(property_id: int) -> PropertyDetail:
     import logging
     logging.error(f"Error loading property {property_id}: {e}", exc_info=True)
     raise HTTPException(status_code=500, detail="Unable to load property")
+
+
+@app.get("/api/properties/{id}", response_model=PropertyDetail, tags=["properties"])
+def get_property_by_id(id: int) -> PropertyDetail:
+  """Return a single property by its listing number (API endpoint for frontend)."""
+  # Delegate to the main property endpoint
+  return get_property(id)
 
