@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import englishLogo from '../assets/PNG/english_version.png'
 import logo from '../assets/PNG/logo.png'
-import useAuth from '../hooks/useAuth'
+import { useAuth } from '../contexts/AuthContext'
 import '../App.css'
 
 function NavBar() {

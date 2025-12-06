@@ -13,6 +13,9 @@ function AuthPage() {
   const [searchParams] = useSearchParams()
   const { login, signup, isAuthenticated } = useAuth()
   
+  // Get the page user was trying to access before login
+  const from = location.state?.from?.pathname || searchParams.get('from') || '/'
+  
   const [mode, setMode] = useState(location.pathname === '/signup' ? 'signup' : 'signin')
   const [formData, setFormData] = useState({
     email: '',
@@ -45,9 +48,11 @@ function AuthPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/')
+      // Navigate back to the page user was on, or home if no previous page
+      const returnTo = location.state?.from?.pathname || searchParams.get('from') || '/'
+      navigate(returnTo, { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, location.state, searchParams])
 
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -113,7 +118,8 @@ function AuthPage() {
       }
 
       if (result.success) {
-        navigate('/')
+        // Navigate back to the page user was on, or home if no previous page
+        navigate(from, { replace: true })
       } else {
         setServerError(result.error || 'Authentication failed')
       }
@@ -134,8 +140,9 @@ function AuthPage() {
     const providerKey = providerMap[provider]
     if (!providerKey) return
 
-    // Redirect to OAuth endpoint
-    window.location.href = `${API_BASE_URL}/auth/${providerKey}/login`
+    // Redirect to OAuth endpoint with return URL
+    const returnUrl = encodeURIComponent(window.location.pathname + window.location.search)
+    window.location.href = `${API_BASE_URL}/auth/${providerKey}/login?from=${returnUrl}`
   }
 
   const toggleMode = () => {

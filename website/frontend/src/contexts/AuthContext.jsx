@@ -10,6 +10,96 @@ export function AuthProvider({ children }) {
   const [refreshToken, setRefreshToken] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  const logout = async () => {
+    const storedRefresh = localStorage.getItem('refreshToken')
+    
+    if (storedRefresh) {
+      try {
+        await fetch(`${API_BASE_URL}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ refresh_token: storedRefresh })
+        })
+      } catch (error) {
+        console.error('Logout error:', error)
+      }
+    }
+
+    setUser(null)
+    setToken(null)
+    setRefreshToken(null)
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('user')
+
+    if (window.location.pathname !== '/') {
+      window.location.href = '/'
+    }
+  }
+
+  const refreshAccessToken = async () => {
+    const storedRefresh = localStorage.getItem('refreshToken')
+    if (!storedRefresh) {
+      logout()
+      return
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ refresh_token: storedRefresh })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setToken(data.access_token)
+        setRefreshToken(data.refresh_token)
+        localStorage.setItem('accessToken', data.access_token)
+        localStorage.setItem('refreshToken', data.refresh_token)
+        await loadUser(data.access_token)
+      } else {
+        logout()
+      }
+    } catch (error) {
+      console.error('Token refresh failed:', error)
+      logout()
+    }
+  }
+
+  const loadUser = async (accessToken) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      })
+
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
+      } else {
+        // Token might be expired, try refresh
+        const storedRefresh = localStorage.getItem('refreshToken')
+        if (storedRefresh) {
+          await refreshAccessToken()
+        } else {
+          logout()
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load user:', error)
+      logout()
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Load user from localStorage on mount
   useEffect(() => {
     const storedToken = localStorage.getItem('accessToken')
@@ -47,67 +137,6 @@ export function AuthProvider({ children }) {
 
     return () => clearInterval(interval)
   }, [token, refreshToken])
-
-  const loadUser = async (accessToken) => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`
-        }
-      })
-
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData)
-        localStorage.setItem('user', JSON.stringify(userData))
-      } else {
-        // Token might be expired, try refresh
-        const storedRefresh = localStorage.getItem('refreshToken')
-        if (storedRefresh) {
-          await refreshAccessToken()
-        } else {
-          logout()
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load user:', error)
-      logout()
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const refreshAccessToken = async () => {
-    const storedRefresh = localStorage.getItem('refreshToken')
-    if (!storedRefresh) {
-      logout()
-      return
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ refresh_token: storedRefresh })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setToken(data.access_token)
-        setRefreshToken(data.refresh_token)
-        localStorage.setItem('accessToken', data.access_token)
-        localStorage.setItem('refreshToken', data.refresh_token)
-        await loadUser(data.access_token)
-      } else {
-        logout()
-      }
-    } catch (error) {
-      console.error('Token refresh failed:', error)
-      logout()
-    }
-  }
 
   const login = async (email, password) => {
     try {
@@ -162,35 +191,6 @@ export function AuthProvider({ children }) {
       }
     } catch (error) {
       return { success: false, error: 'Network error. Please try again.' }
-    }
-  }
-
-  const logout = async () => {
-    const storedRefresh = localStorage.getItem('refreshToken')
-    
-    if (storedRefresh) {
-      try {
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ refresh_token: storedRefresh })
-        })
-      } catch (error) {
-        console.error('Logout error:', error)
-      }
-    }
-
-    setUser(null)
-    setToken(null)
-    setRefreshToken(null)
-    localStorage.removeItem('accessToken')
-    localStorage.removeItem('refreshToken')
-    localStorage.removeItem('user')
-
-    if (window.location.pathname !== '/') {
-      window.location.href = '/'
     }
   }
 

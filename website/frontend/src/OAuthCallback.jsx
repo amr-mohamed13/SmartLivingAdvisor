@@ -11,14 +11,15 @@ function OAuthCallback() {
     const accessToken = searchParams.get('access_token')
     const refreshToken = searchParams.get('refresh_token')
     const error = searchParams.get('error')
+    const returnTo = searchParams.get('from') || '/'
 
     if (error) {
       // Redirect to signin with error
       navigate(`/signin?error=${error}`)
     } else if (accessToken && refreshToken) {
       handleOAuthCallback(accessToken, refreshToken)
-      // Navigate to home after successful OAuth
-      navigate('/')
+      // Navigate back to the page user was on, or home
+      navigate(returnTo, { replace: true })
     } else {
       navigate('/signin?error=oauth_failed')
     }

@@ -28,7 +28,7 @@ function ListingCard({ property, onHover, onClick }) {
     const propertyId = property.no ?? property.id
 
     if (!isAuthenticated || !token) {
-      navigate('/signin')
+      navigate('/signin', { state: { from: { pathname: window.location.pathname } } })
       return
     }
 

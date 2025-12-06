@@ -106,7 +106,7 @@ function PropertyModal({ property, onClose }) {
   const handleSaveProperty = async () => {
     if (!isAuthenticated) {
       onClose()
-      navigate('/signin')
+      navigate('/signin', { state: { from: { pathname: window.location.pathname } } })
       return
     }
 
