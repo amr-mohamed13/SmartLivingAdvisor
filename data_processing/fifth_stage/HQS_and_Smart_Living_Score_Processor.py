@@ -33,7 +33,7 @@ from pathlib import Path
 # Configuration
 # --------------------------
 
-INPUT_FILE  = Path("/mnt/data/cleaned_final_dataset.csv")  # YOU PROVIDED THIS FILE
+INPUT_FILE  = Path("/mnt/data/cleaned_final_dataset.csv")  
 OUTPUT_FILE = Path(r"D:\DEPI_Project\Datasets\Dataset\real_estate_dataset.cleaned.csv")
 
 RANDOM_SEED = 42
