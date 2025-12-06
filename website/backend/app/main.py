@@ -12,7 +12,7 @@ from functools import lru_cache
 from typing import List, Sequence
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy import create_engine, text
@@ -241,6 +241,12 @@ class SearchProperty(BaseModel):
   num_bathrooms: int | None
   floor_area_m2: float | None
   smart_living_score: float | None
+
+
+class PropertyDetail(SearchProperty):
+  """Extended property model for the PDP."""
+  description: str | None = None
+  amenities: str | None = None
 
 
 @app.get("/search", response_model=List[SearchProperty], tags=["search"])
@@ -477,9 +483,63 @@ def search_properties(
         )
       )
 
-    return results
+  return results
   except Exception as e:
     import logging
     logging.error(f"Error searching properties: {e}", exc_info=True)
     return []
+
+
+@app.get("/property/{property_id}", response_model=PropertyDetail, tags=["properties"])
+def get_property(property_id: int) -> PropertyDetail:
+  """Return a single property by its listing number."""
+
+  try:
+    engine = get_engine()
+
+    query_sql = """
+    SELECT
+      no,
+      property_type,
+      price,
+      location,
+      latitude,
+      longitude,
+      COALESCE(floor_area_m2, floor_area) AS floor_area_m2,
+      num_rooms,
+      num_bathrooms,
+      smart_living_score,
+      description,
+      amenities
+    FROM public.real_estate_data
+    WHERE no = :property_id
+    LIMIT 1
+    """
+
+    with engine.connect() as conn:
+      row = conn.execute(text(query_sql), {"property_id": property_id}).mappings().first()
+
+    if not row:
+      raise HTTPException(status_code=404, detail="Property not found")
+
+    return PropertyDetail(
+      no=int(row["no"]),
+      property_type=row.get("property_type"),
+      price=row.get("price"),
+      location=str(row.get("location") or "Unknown"),
+      latitude=float(row["latitude"]) if row.get("latitude") is not None else None,
+      longitude=float(row["longitude"]) if row.get("longitude") is not None else None,
+      num_rooms=row.get("num_rooms"),
+      num_bathrooms=row.get("num_bathrooms"),
+      floor_area_m2=float(row["floor_area_m2"]) if row.get("floor_area_m2") is not None else None,
+      smart_living_score=float(row["smart_living_score"]) if row.get("smart_living_score") is not None else None,
+      description=row.get("description"),
+      amenities=row.get("amenities"),
+    )
+  except HTTPException:
+    raise
+  except Exception as e:
+    import logging
+    logging.error(f"Error loading property {property_id}: {e}", exc_info=True)
+    raise HTTPException(status_code=500, detail="Unable to load property")
 

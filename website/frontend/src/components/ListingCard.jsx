@@ -51,8 +51,12 @@ function ListingCard({ property, onHover, onClick }) {
   }
 
   const handleCardClick = () => {
+    const destinationId = property.no ?? property.id
     if (onClick) {
       onClick(property)
+    }
+    if (destinationId !== undefined && destinationId !== null) {
+      navigate(`/property/${destinationId}`)
     }
   }
 
