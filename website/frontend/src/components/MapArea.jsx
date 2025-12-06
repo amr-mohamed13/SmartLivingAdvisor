@@ -27,17 +27,19 @@ function MapArea({ lat, lng, address, city }) {
 
       try {
         setLoading(true)
-        const categoryParams = defaultCategories.map((c) => `type=${c.key}`).join('&')
-        const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${center.lat},${center.lng}&radius=2500&${categoryParams}&key=${GOOGLE_MAPS_KEY}`
+        const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+        const types = defaultCategories.map((c) => c.key).join(',')
+        const url = `${API_BASE_URL}/api/places/nearby?lat=${center.lat}&lng=${center.lng}&radius=2500&types=${types}`
         const response = await fetch(url)
         if (!response.ok) throw new Error('Places request failed')
         const data = await response.json()
-        if (Array.isArray(data.results)) {
-          const mapped = data.results.slice(0, 18).map((place) => ({
+        if (data.status === 'OK' && Array.isArray(data.results)) {
+          const mapped = data.results.map((place, idx) => ({
             name: place.name,
             rating: place.rating,
-            distance: place.vicinity,
+            distance: place.distance,
             types: place.types,
+            icon: defaultCategories[idx % defaultCategories.length].icon,
           }))
           setPlaces(mapped)
         } else {

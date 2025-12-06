@@ -20,17 +20,24 @@ function ViewedHomesPage() {
     async function loadHomes() {
       if (!token) return
       try {
-        const response = await fetch(`${API_BASE_URL}/user/viewed`, { headers: { Authorization: `Bearer ${token}` } })
+        const response = await fetch(`${API_BASE_URL}/user/viewed`, { 
+          headers: { Authorization: `Bearer ${token}` } 
+        })
         if (response.ok) {
           const data = await response.json()
+          console.log('Viewed homes data:', data) // Debug log
           setHomes(Array.isArray(data) ? data : [])
+        } else {
+          console.error('Failed to load viewed homes:', response.status, await response.text())
         }
       } catch (error) {
         console.error('Failed to load viewed homes', error)
       }
     }
-    loadHomes()
-  }, [token])
+    if (isAuthenticated && token) {
+      loadHomes()
+    }
+  }, [token, isAuthenticated])
 
   return (
     <div className="page-shell">
@@ -52,23 +59,30 @@ function ViewedHomesPage() {
           </div>
         ) : (
           <div className="saved-grid">
-            {homes.map((home) => (
-              <article key={home.id} className="saved-card">
-                <div className="saved-thumb">
-                  <img src={getPropertyImage(home.property_type)} alt={home.property_type || 'Home'} />
-                </div>
-                <div className="saved-body">
-                  <div className="saved-title-row">
-                    <h3>${home.price?.toLocaleString?.() || home.price || 'Price on request'}</h3>
-                    <button type="button" className="text-link" onClick={() => navigate(`/property/${home.id}`)}>
-                      View
-                    </button>
+            {homes.map((home) => {
+              const propertyId = home.id || home.property_id
+              return (
+                <article key={propertyId || home.created_at} className="saved-card">
+                  <div className="saved-thumb">
+                    <img src={getPropertyImage(home.property_type)} alt={home.property_type || 'Home'} />
                   </div>
-                  <p className="muted">{home.location || 'Location coming soon'}</p>
-                  <p className="muted">{home.num_rooms ? `${home.num_rooms} bd` : ''} {home.num_bathrooms ? `• ${home.num_bathrooms} ba` : ''}</p>
-                </div>
-              </article>
-            ))}
+                  <div className="saved-body">
+                    <div className="saved-title-row">
+                      <h3>{home.price ? `$${Number(home.price).toLocaleString()}` : 'Price on request'}</h3>
+                      <button type="button" className="text-link" onClick={() => navigate(`/property/${propertyId}`)}>
+                        View
+                      </button>
+                    </div>
+                    <p className="muted">{home.location || 'Location coming soon'}</p>
+                    <p className="muted">
+                      {home.num_rooms ? `${home.num_rooms} bd` : ''} 
+                      {home.num_rooms && home.num_bathrooms ? ' • ' : ''}
+                      {home.num_bathrooms ? `${home.num_bathrooms} ba` : ''}
+                    </p>
+                  </div>
+                </article>
+              )
+            })}
           </div>
         )}
       </main>

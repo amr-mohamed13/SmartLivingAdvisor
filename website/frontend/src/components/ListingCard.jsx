@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import useAuth from '../hooks/useAuth'
 import getPropertyImage from '../utils/propertyImages'
@@ -11,6 +11,30 @@ function ListingCard({ property, onHover, onClick }) {
   const [imageError, setImageError] = useState(false)
   const navigate = useNavigate()
   const { isAuthenticated, token } = useAuth()
+
+  // Check if property is saved when component loads
+  useEffect(() => {
+    if (isAuthenticated && token && property?.no) {
+      checkSavedStatus()
+    }
+  }, [isAuthenticated, token, property?.no])
+
+  const checkSavedStatus = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/saved-properties`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const savedIds = await response.json()
+        const propertyId = property.no ?? property.id
+        setIsFavorite(savedIds.includes(propertyId))
+      }
+    } catch (err) {
+      console.error('Failed to check saved status:', err)
+    }
+  }
 
   const formatPrice = (price) => {
     if (!price) return 'Price on request'
@@ -33,11 +57,12 @@ function ListingCard({ property, onHover, onClick }) {
     }
 
     const nextFavorite = !isFavorite
-    setIsFavorite(nextFavorite)
+    setIsFavorite(nextFavorite) // Optimistic update
 
     try {
+      let response
       if (nextFavorite) {
-        await fetch(`${API_BASE_URL}/user/save-property`, {
+        response = await fetch(`${API_BASE_URL}/user/save-property`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -46,23 +71,52 @@ function ListingCard({ property, onHover, onClick }) {
           body: JSON.stringify({ property_id: propertyId }),
         })
       } else {
-        await fetch(`${API_BASE_URL}/user/save-property/${propertyId}`, {
+        response = await fetch(`${API_BASE_URL}/user/save-property/${propertyId}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`,
           },
         })
       }
+      
+      if (!response.ok) {
+        // Revert on error
+        setIsFavorite(!nextFavorite)
+        const errorData = await response.json().catch(() => ({ detail: 'Failed to save property' }))
+        console.error('Failed to save property:', errorData)
+      }
     } catch (err) {
+      // Revert on error
+      setIsFavorite(!nextFavorite)
       console.error('Failed to persist favorite', err)
     }
   }
 
-  const handleCardClick = () => {
+  const handleCardClick = async () => {
     const destinationId = property.no ?? property.id
+    
+    // If onClick handler is provided (e.g., for modal), use it
     if (onClick) {
       onClick(property)
+      // Log view if authenticated
+      if (isAuthenticated && token && destinationId) {
+        try {
+          await fetch(`${API_BASE_URL}/user/view-property`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ property_id: destinationId })
+          })
+        } catch (err) {
+          console.error('Failed to log view:', err)
+        }
+      }
+      return
     }
+    
+    // Otherwise navigate to property page
     if (destinationId !== undefined && destinationId !== null) {
       navigate(`/property/${destinationId}`)
     }

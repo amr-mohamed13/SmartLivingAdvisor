@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function PropertyModal({ property, onClose }) {
   const navigate = useNavigate()
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, refreshAccessToken } = useAuth()
   const [fullProperty, setFullProperty] = useState(property)
   const [loading, setLoading] = useState(!property)
   const [error, setError] = useState(null)
@@ -110,6 +110,11 @@ function PropertyModal({ property, onClose }) {
       return
     }
 
+    if (!token) {
+      alert('Please sign in again to save properties.')
+      return
+    }
+
     try {
       if (isSaved) {
         // Unsave property
@@ -122,6 +127,23 @@ function PropertyModal({ property, onClose }) {
         
         if (response.ok) {
           setIsSaved(false)
+        } else if (response.status === 401) {
+          // Token expired, try to refresh
+          await refreshAccessToken()
+          // Get updated token from context
+          const updatedToken = localStorage.getItem('accessToken')
+          // Retry the request
+          const retryResponse = await fetch(`${API_BASE_URL}/user/save-property/${fullProperty.no}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${updatedToken}`,
+            },
+          })
+          if (retryResponse.ok) {
+            setIsSaved(false)
+          } else {
+            throw new Error('Unable to unsave property')
+          }
         } else {
           throw new Error('Unable to unsave property')
         }
@@ -138,6 +160,25 @@ function PropertyModal({ property, onClose }) {
         
         if (response.ok) {
           setIsSaved(true)
+        } else if (response.status === 401) {
+          // Token expired, try to refresh
+          await refreshAccessToken()
+          // Get updated token from context
+          const updatedToken = localStorage.getItem('accessToken')
+          // Retry the request
+          const retryResponse = await fetch(`${API_BASE_URL}/user/save-property`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${updatedToken}`,
+            },
+            body: JSON.stringify({ property_id: fullProperty.no }),
+          })
+          if (retryResponse.ok) {
+            setIsSaved(true)
+          } else {
+            throw new Error('Unable to save property')
+          }
         } else {
           throw new Error('Unable to save property')
         }

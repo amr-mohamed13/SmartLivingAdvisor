@@ -13,3 +13,4 @@ with engine.connect() as conn:
     for row in result:
         print(f"  - {row[0]} ({row[1]})")
 
+

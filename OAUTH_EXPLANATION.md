@@ -78,3 +78,4 @@ If you want to enable "Sign in with Google/Facebook/Apple", you need to:
 
 If you want to enable OAuth later for a better user experience, follow the setup instructions above. For now, you can continue developing and testing with email/password authentication.
 
+

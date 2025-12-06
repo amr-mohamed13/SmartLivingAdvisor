@@ -195,14 +195,38 @@ async def view_property(
     user_id = current_user["id"]
     
     with engine.connect() as conn:
-        conn.execute(
+        # Check if this view already exists today (to avoid duplicate entries)
+        # If it exists, update the timestamp; otherwise insert new
+        existing = conn.execute(
             text("""
-                INSERT INTO user_interactions (user_id, property_id, interaction_type)
-                VALUES (:user_id, :property_id, 'viewed')
-                ON CONFLICT DO NOTHING
+                SELECT id FROM user_interactions
+                WHERE user_id = :user_id 
+                AND property_id = :property_id 
+                AND interaction_type = 'viewed'
+                AND DATE(created_at) = CURRENT_DATE
             """),
             {"user_id": user_id, "property_id": request.property_id}
-        )
+        ).mappings().first()
+        
+        if not existing:
+            # Insert new view
+            conn.execute(
+                text("""
+                    INSERT INTO user_interactions (user_id, property_id, interaction_type)
+                    VALUES (:user_id, :property_id, 'viewed')
+                """),
+                {"user_id": user_id, "property_id": request.property_id}
+            )
+        else:
+            # Update timestamp of existing view
+            conn.execute(
+                text("""
+                    UPDATE user_interactions
+                    SET created_at = CURRENT_TIMESTAMP
+                    WHERE id = :id
+                """),
+                {"id": existing["id"]}
+            )
         conn.commit()
 
     return {"message": "View logged"}
@@ -265,7 +289,19 @@ async def get_viewed(current_user: dict = Depends(get_current_user)):
             {"user_id": user_id},
         ).mappings().all()
 
-    return [dict(row) for row in results]
+    # Remove duplicates (same property viewed multiple times) and keep most recent
+    seen = {}
+    unique_results = []
+    for row in results:
+        prop_id = row["id"]
+        if prop_id and prop_id not in seen:
+            seen[prop_id] = True
+            unique_results.append(row)
+    
+    # Sort by created_at descending (most recent first)
+    unique_results.sort(key=lambda x: x["created_at"] if x["created_at"] else "", reverse=True)
+
+    return [dict(row) for row in unique_results]
 
 
 @router.get("/saved-properties", response_model=List[int])
@@ -308,4 +344,5 @@ async def get_user_interactions(current_user: dict = Depends(get_current_user)):
         )
         for row in results
     ]
+
 
