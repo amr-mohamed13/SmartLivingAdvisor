@@ -3,14 +3,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Link } from 'react-router-dom'
 import './SearchResults.css'
 import './App.css'
-import englishLogo from './assets/PNG/english_version.png'
-import logo from './assets/PNG/logo.png'
 import footerIllustration from './assets/PNG/footer.png'
 import MapView from './components/MapView'
 import SearchBar from './components/SearchBar'
 import ListingCard from './components/ListingCard'
 import FilterDrawer from './components/FilterDrawer'
 import PropertyModal from './components/PropertyModal'
+import NavBar from './components/NavBar'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -411,25 +410,7 @@ function SearchResults() {
   return (
     <div className="search-results-page">
       {/* Header */}
-      <nav className="nav">
-        <div className="nav-links">
-          <Link to="/#listings">Buy</Link>
-          <Link to="/#listings">Rent</Link>
-          <Link to="/#services">Features</Link>
-          <Link to="/#contact">Support</Link>
-        </div>
-        <div className="brand-center">
-          <Link to="/">
-            <img src={englishLogo} alt="SmartLivingAdvisor logo" />
-          </Link>
-        </div>
-        <div className="nav-actions">
-          <Link to="/signin">
-            <button className="ghost">Sign In</button>
-          </Link>
-          <button className="primary">Get Started</button>
-        </div>
-      </nav>
+      <NavBar />
 
       {/* Professional Search Bar */}
       <SearchBar

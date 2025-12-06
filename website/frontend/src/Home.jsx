@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import './App.css'
+import NavBar from './components/NavBar'
+import useAuth from './hooks/useAuth'
 import englishLogo from './assets/PNG/english_version.png'
 import logo from './assets/PNG/logo.png'
 import contactIllustration from './assets/PNG/contact-illustration.png'
@@ -117,6 +119,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function Home() {
   const navigate = useNavigate()
+  const { isAuthenticated } = useAuth()
   const [listings, setListings] = useState(fallbackListings)
   const [loadingListings, setLoadingListings] = useState(false)
   const [listingsError, setListingsError] = useState(null)
@@ -190,23 +193,7 @@ function Home() {
 
   return (
     <div className="app">
-      <nav className="nav">
-        <div className="nav-links">
-          <a href="#listings">Buy</a>
-          <a href="#listings">Rent</a>
-          <a href="#services">Features</a>
-          <a href="#contact">Support</a>
-        </div>
-        <div className="brand-center">
-          <img src={englishLogo} alt="SmartLivingAdvisor logo" />
-        </div>
-        <div className="nav-actions">
-          <Link to="/signin">
-            <button className="ghost">Sign In</button>
-          </Link>
-          <button className="primary">Get Started</button>
-        </div>
-      </nav>
+      <NavBar />
 
       {showStickySearch && (
         <div className="sticky-search-bar">
@@ -274,17 +261,32 @@ function Home() {
         </div>
       </header>
 
-      <section className="recommendations">
-        <div className="recommendations-content">
-          <h2>Get home recommendations</h2>
-          <p>Sign in for a more personalized experience.</p>
-          <Link to="/signin">
-            <button className="ghost">Sign in</button>
-          </Link>
-        </div>
-        <div className="recommendations-image">
-          <img src={recommendationImage} alt="Home recommendations" />
-        </div>
+      <section className="recommendations refined-card">
+        {isAuthenticated ? (
+          <>
+            <div className="recommendations-content">
+              <p className="eyebrow">Personalized for you</p>
+              <h2>Recommendations underway</h2>
+              <p>Search and save a few homes you like and we’ll find recommendations for you.</p>
+            </div>
+            <div className="recommendations-image">
+              <img src={recommendationImage} alt="Personalized recommendations" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="recommendations-content">
+              <p className="eyebrow">Get home recommendations</p>
+              <h2>Sign in for a more personalized experience.</h2>
+              <Link to="/signin">
+                <button className="primary subtle-btn">Sign in</button>
+              </Link>
+            </div>
+            <div className="recommendations-image">
+              <img src={recommendationImage} alt="Home recommendations" />
+            </div>
+          </>
+        )}
       </section>
 
       <section id="services" className="services">

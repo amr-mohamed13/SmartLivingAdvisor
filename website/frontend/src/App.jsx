@@ -5,6 +5,9 @@ import AuthPage from './AuthPage'
 import SearchResults from './SearchResults'
 import PropertyDetailsPage from './PropertyDetailsPage'
 import OAuthCallback from './OAuthCallback'
+import ProfilePage from './ProfilePage'
+import SavedHomesPage from './SavedHomesPage'
+import ViewedHomesPage from './ViewedHomesPage'
 import './App.css'
 
 function App() {
@@ -18,6 +21,9 @@ function App() {
           <Route path="/auth/callback" element={<OAuthCallback />} />
           <Route path="/search" element={<SearchResults />} />
           <Route path="/property/:id" element={<PropertyDetailsPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/saved" element={<SavedHomesPage />} />
+          <Route path="/viewed" element={<ViewedHomesPage />} />
         </Routes>
       </Router>
     </AuthProvider>
