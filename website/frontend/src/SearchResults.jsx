@@ -28,6 +28,8 @@ function SearchResults() {
   const [properties, setProperties] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [visibleProperties, setVisibleProperties] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
   
   // Filter states
   const [searchQuery, setSearchQuery] = useState(searchParams.get('query') || '')
@@ -188,7 +190,7 @@ function SearchResults() {
         if (minHqsScore) params.append('min_hqs_score', minHqsScore)
         if (maxHqsScore) params.append('max_hqs_score', maxHqsScore)
         params.append('sort_by', sortBy)
-        params.append('limit', '50')
+        params.append('limit', '200')
 
         const response = await fetch(`${API_BASE_URL}/search?${params.toString()}`)
         
@@ -385,6 +387,25 @@ function SearchResults() {
     hasParking,
     hasPool
   ].filter(Boolean).length
+
+  const displayedProperties = visibleProperties.length ? visibleProperties : properties
+  const pageSize = 20
+  const totalPages = Math.max(1, Math.ceil(displayedProperties.length / pageSize))
+  const paginatedProperties = displayedProperties.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+
+  useEffect(() => {
+    setVisibleProperties(properties)
+    setCurrentPage(1)
+  }, [properties])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [visibleProperties])
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <div className="search-results-page">
@@ -889,9 +910,13 @@ function SearchResults() {
       <div className="search-results-container">
         {/* Left Column - Map (Fixed) */}
         <div className="search-results-map">
-          <MapView properties={properties} highlightedProperty={hoveredProperty} />
+          <MapView
+            properties={properties}
+            highlightedProperty={hoveredProperty}
+            onVisiblePropertiesChange={setVisibleProperties}
+          />
         </div>
-        
+
         {/* Right Column - Property Listings (Scrollable) */}
         <div className="search-results-listings-wrapper">
           <div className="search-results-listings">
@@ -921,8 +946,8 @@ function SearchResults() {
                     Real Estate & Homes For Sale
                   </h2>
                   <div className="results-controls">
-                    <span className="results-count">{properties.length} {properties.length === 1 ? 'result' : 'results'}</span>
-                    <select 
+                    <span className="results-count">{displayedProperties.length} {displayedProperties.length === 1 ? 'result' : 'results'}</span>
+                    <select
                       className="sort-dropdown"
                       value={sortBy}
                       onChange={(e) => {
@@ -938,7 +963,7 @@ function SearchResults() {
                 </div>
 
                 <div className="search-results-list">
-                  {properties.map((property) => (
+                  {paginatedProperties.map((property) => (
                     <ListingCard
                       key={property.no}
                       property={property}
@@ -947,6 +972,40 @@ function SearchResults() {
                     />
                   ))}
                 </div>
+
+                {displayedProperties.length > pageSize && (
+                  <div className="pagination">
+                    <button
+                      className="page-button"
+                      onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
+                      disabled={currentPage === 1}
+                      aria-label="Previous page"
+                    >
+                      ‹
+                    </button>
+                    {Array.from({ length: totalPages }).map((_, index) => {
+                      const page = index + 1
+                      return (
+                        <button
+                          key={page}
+                          className={`page-button ${currentPage === page ? 'active' : ''}`}
+                          onClick={() => handlePageChange(page)}
+                          aria-label={`Go to page ${page}`}
+                        >
+                          {page}
+                        </button>
+                      )
+                    })}
+                    <button
+                      className="page-button"
+                      onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
+                      disabled={currentPage === totalPages}
+                      aria-label="Next page"
+                    >
+                      ›
+                    </button>
+                  </div>
+                )}
 
                 {/* Footer at bottom of properties list */}
                 <footer className="footer">

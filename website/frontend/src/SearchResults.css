@@ -26,29 +26,29 @@
 /* Main Container - Split Layout (Map Left, Listings Right) */
 .search-results-container {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0;
-  height: calc(100vh - 80px);
-  max-width: 100%;
-  overflow: hidden;
-  position: relative;
+  grid-template-columns: minmax(420px, 1.05fr) minmax(520px, 1.2fr);
+  gap: var(--spacing-xl);
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 var(--spacing-xl) var(--spacing-2xl);
 }
 
 /* Left Column - Map (Fixed, Sticky) */
 .search-results-map {
-  position: relative;
-  height: 100%;
-  background: var(--background);
-  border-right: 1px solid var(--gray-300);
+  position: sticky;
+  top: 96px;
+  height: calc(100vh - 120px);
+  background: #fff;
+  border: 1px solid #E5E7EB;
+  border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 12px 32px rgba(17, 24, 39, 0.08);
 }
 
 /* Right Column - Listings (Scrollable) */
 .search-results-listings-wrapper {
-  overflow-y: auto;
-  background: #fff;
-  height: 100%;
-  position: relative;
+  background: transparent;
 }
 
 .search-results-listings-wrapper::-webkit-scrollbar {
@@ -69,11 +69,12 @@
 }
 
 .search-results-listings {
-  padding: var(--spacing-xl);
+  padding: 0;
   min-height: 100%;
   display: flex;
   flex-direction: column;
   max-width: 100%;
+  gap: var(--spacing-xl);
 }
 
 /* Results Header */
@@ -129,7 +130,7 @@
 /* Property List Grid - 2 Columns */
 .search-results-list {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: var(--spacing-xl);
   flex: 1;
 }
@@ -166,6 +167,45 @@
   margin-top: var(--spacing-2xl);
   padding-top: var(--spacing-xl);
   border-top: 1px solid #E5E7EB;
+}
+
+.pagination {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--spacing-lg);
+}
+
+.page-button {
+  min-width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #E5E7EB;
+  background: #fff;
+  color: #111827;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 18px rgba(17, 24, 39, 0.04);
+}
+
+.page-button:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.page-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.page-button.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 8px 20px rgba(0, 79, 82, 0.22);
 }
 
 /* Responsive Design */

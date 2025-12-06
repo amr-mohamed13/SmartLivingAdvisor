@@ -1,18 +1,18 @@
 .listing-card {
   background: #fff;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 10px rgba(17, 24, 39, 0.06);
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
 .listing-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  transform: translateY(-4px);
+  box-shadow: 0 12px 28px rgba(17, 24, 39, 0.12);
+  transform: translateY(-2px);
 }
 
 .listing-image-container {
@@ -46,56 +46,33 @@
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.showcase-badge {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  background: rgba(0, 0, 0, 0.7);
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  z-index: 2;
-  backdrop-filter: blur(4px);
-}
-
-.showcase-badge svg {
-  width: 14px;
-  height: 14px;
-  fill: #FFD700;
-}
-
 .favorite-button {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
-  border: none;
+  top: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 23, 42, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s ease;
   z-index: 2;
-  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 20px rgba(17, 24, 39, 0.12);
 }
 
 .favorite-button:hover {
   background: #fff;
-  transform: scale(1.1);
+  transform: translateY(-1px);
 }
 
 .favorite-button svg {
   width: 20px;
   height: 20px;
-  color: #595959;
+  color: #0F172A;
   transition: all 0.2s ease;
 }
 
@@ -104,27 +81,35 @@
   fill: #EF4444;
 }
 
-.favorite-button:hover svg {
-  color: #EF4444;
+.score-chip {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 79, 82, 0.95);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 6px 18px rgba(0, 79, 82, 0.25);
 }
 
-.score-badge {
-  position: absolute;
-  bottom: 12px;
-  left: 12px;
-  background: linear-gradient(135deg, #004F52 0%, #1BA7A5 100%);
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 13px;
+.score-value {
   font-weight: 700;
-  z-index: 2;
-  box-shadow: 0 2px 8px rgba(0, 79, 82, 0.3);
+  font-size: 13px;
+}
+
+.score-label {
+  opacity: 0.9;
 }
 
 .image-dots {
   position: absolute;
-  bottom: 12px;
+  bottom: 10px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -147,7 +132,7 @@
 }
 
 .listing-details {
-  padding: 16px;
+  padding: 14px 14px 16px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -162,7 +147,7 @@
 }
 
 .listing-price {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
   color: #0A0A0A;
   line-height: 1.2;
@@ -170,8 +155,8 @@
 }
 
 .more-options-button {
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border: none;
   background: transparent;
   color: #004F52;
@@ -189,14 +174,14 @@
 }
 
 .listing-specs {
-  font-size: 14px;
-  color: #595959;
+  font-size: 13px;
+  color: #4B5563;
   line-height: 1.4;
 }
 
 .listing-address {
-  font-size: 14px;
-  color: #595959;
+  font-size: 13px;
+  color: #6B7280;
   line-height: 1.4;
   margin-top: 4px;
 }
