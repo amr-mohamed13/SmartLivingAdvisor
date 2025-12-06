@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import useAuth from '../hooks/useAuth'
 import getPropertyImage from '../utils/propertyImages'
 import './ListingCard.css'
 
@@ -9,6 +10,7 @@ function ListingCard({ property, onHover, onClick }) {
   const [isFavorite, setIsFavorite] = useState(false)
   const [imageError, setImageError] = useState(false)
   const navigate = useNavigate()
+  const { isAuthenticated, token } = useAuth()
 
   const formatPrice = (price) => {
     if (!price) return 'Price on request'
@@ -23,9 +25,9 @@ function ListingCard({ property, onHover, onClick }) {
 
   const handleFavoriteClick = async (e) => {
     e.stopPropagation()
-    const authToken = localStorage.getItem('authToken')
+    const propertyId = property.no ?? property.id
 
-    if (!authToken) {
+    if (!isAuthenticated || !token) {
       navigate('/signin')
       return
     }
@@ -34,17 +36,23 @@ function ListingCard({ property, onHover, onClick }) {
     setIsFavorite(nextFavorite)
 
     try {
-      await fetch(`${API_BASE_URL}/user-interactions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          property_id: property.no,
-          action: nextFavorite ? 'save' : 'unsave',
-        }),
-      })
+      if (nextFavorite) {
+        await fetch(`${API_BASE_URL}/user/save-property`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ property_id: propertyId }),
+        })
+      } else {
+        await fetch(`${API_BASE_URL}/user/save-property/${propertyId}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      }
     } catch (err) {
       console.error('Failed to persist favorite', err)
     }

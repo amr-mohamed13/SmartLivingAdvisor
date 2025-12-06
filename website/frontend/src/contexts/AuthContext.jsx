@@ -14,7 +14,16 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const storedToken = localStorage.getItem('accessToken')
     const storedRefreshToken = localStorage.getItem('refreshToken')
-    
+    const storedUser = localStorage.getItem('user')
+
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error('Failed to parse cached user', error)
+      }
+    }
+
     if (storedToken) {
       setToken(storedToken)
       setRefreshToken(storedRefreshToken)
@@ -50,6 +59,7 @@ export function AuthProvider({ children }) {
       if (response.ok) {
         const userData = await response.json()
         setUser(userData)
+        localStorage.setItem('user', JSON.stringify(userData))
       } else {
         // Token might be expired, try refresh
         const storedRefresh = localStorage.getItem('refreshToken')
@@ -117,6 +127,7 @@ export function AuthProvider({ children }) {
         setUser(data.user)
         localStorage.setItem('accessToken', data.access_token)
         localStorage.setItem('refreshToken', data.refresh_token)
+        localStorage.setItem('user', JSON.stringify(data.user))
         return { success: true }
       } else {
         return { success: false, error: data.detail || 'Login failed' }
@@ -144,6 +155,7 @@ export function AuthProvider({ children }) {
         setUser(data.user)
         localStorage.setItem('accessToken', data.access_token)
         localStorage.setItem('refreshToken', data.refresh_token)
+        localStorage.setItem('user', JSON.stringify(data.user))
         return { success: true }
       } else {
         return { success: false, error: data.detail || 'Signup failed' }
@@ -175,10 +187,10 @@ export function AuthProvider({ children }) {
     setRefreshToken(null)
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
-    
-    // Use window.location for navigation since we're outside Router context
-    if (window.location.pathname !== '/signin' && window.location.pathname !== '/signup') {
-      window.location.href = '/signin'
+    localStorage.removeItem('user')
+
+    if (window.location.pathname !== '/') {
+      window.location.href = '/'
     }
   }
 

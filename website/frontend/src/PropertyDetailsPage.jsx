@@ -8,12 +8,14 @@ import NearbyHomes from './components/NearbyHomes'
 import SimilarHomes from './components/SimilarHomes'
 import SiteHeader from './components/SiteHeader'
 import './components/PropertyDetails.css'
+import useAuth from './hooks/useAuth'
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function PropertyDetailsPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { token, isAuthenticated } = useAuth()
   const [property, setProperty] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -47,42 +49,71 @@ function PropertyDetailsPage() {
 
   useEffect(() => {
     async function loadSavedState() {
-      const authToken = localStorage.getItem('authToken')
-      if (!authToken) return
+      if (!token) return
       try {
-        const response = await fetch(`${API_BASE_URL}/api/user/saved`, {
-          headers: { Authorization: `Bearer ${authToken}` },
+        const response = await fetch(`${API_BASE_URL}/user/saved`, {
+          headers: { Authorization: `Bearer ${token}` },
         })
         if (!response.ok) return
         const data = await response.json()
-        const ids = Array.isArray(data) ? data : []
-        setIsSaved(ids.includes(Number(id)) || ids.includes(id))
+        const ids = Array.isArray(data) ? data.map((item) => item.id) : []
+        setIsSaved(ids.includes(Number(id)))
       } catch (err) {
         console.error('Failed to load saved properties', err)
       }
     }
 
     loadSavedState()
-  }, [id])
+  }, [id, token])
+
+  useEffect(() => {
+    async function logView() {
+      if (!token || !property) return
+      try {
+        await fetch(`${API_BASE_URL}/user/view-property`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ property_id: Number(id) }),
+        })
+      } catch (err) {
+        console.error('Failed to log view', err)
+      }
+    }
+
+    logView()
+  }, [id, property, token])
 
   const handleSaveProperty = async () => {
-    const authToken = localStorage.getItem('authToken')
-    if (!authToken) {
+    if (!isAuthenticated || !token) {
       setShowSignInPrompt(true)
       return
     }
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/save-property`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({ propertyId: id }),
-      })
-      if (!response.ok) throw new Error('Unable to save property')
-      setIsSaved(true)
+      if (isSaved) {
+        const response = await fetch(`${API_BASE_URL}/user/save-property/${id}`, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+        if (!response.ok) throw new Error('Unable to remove saved property')
+      } else {
+        const response = await fetch(`${API_BASE_URL}/user/save-property`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ property_id: Number(id) }),
+        })
+        if (!response.ok) throw new Error('Unable to save property')
+      }
+      setIsSaved(!isSaved)
+      setShowSignInPrompt(false)
     } catch (err) {
       console.error(err)
     }
